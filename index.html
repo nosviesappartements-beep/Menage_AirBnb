@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mes ménages</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eaf1ef;--card:#fff;--ink:#14303a;--mute:#5d7580;--line:#d3e0dd;--a:#1f7a6b;--b:#5a4fb0;--warn:#b4530a;--warnbg:#fdeede;--ok:#2e7d4f}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1e24;--card:#172b33;--ink:#e6f0ee;--mute:#93aab3;--line:#28414b;--a:#4cc3ae;--b:#9c93ee;--warn:#f0a561;--warnbg:#3a2a18;--ok:#6fd39a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 "Bricolage Grotesque",system-ui,sans-serif}
+main{max-width:640px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:30px;font-weight:800;margin:0 0 4px;letter-spacing:-.02em}
+.sub{color:var(--mute);margin:0 0 20px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.sub button{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:4px 10px;cursor:pointer}
+.next{background:var(--ink);color:var(--bg);border-radius:20px;padding:20px;margin-bottom:20px}
+.next small{opacity:.75;display:block}
+.next .big{font-size:34px;font-weight:800;line-height:1.1;margin:6px 0 4px;letter-spacing:-.02em}
+.next .flag{display:inline-block;margin-top:8px;background:var(--warnbg);color:var(--warn);border-radius:8px;padding:2px 10px;font-weight:600;font-size:14px}
+.tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.tabs button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 14px;cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+h2{font-size:15px;font-weight:600;color:var(--mute);margin:22px 0 8px}
+h3{font-size:14px;font-weight:600;color:var(--mute);margin:10px 0 2px}
+.task{background:var(--card);border-radius:14px;margin-bottom:8px;border-left:6px solid var(--c);overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;padding:12px 14px}
+.row input[type=checkbox]{width:22px;height:22px;accent-color:var(--ok);flex:none}
+.info{flex:1;min-width:0}
+.info b{display:block}
+.info span{color:var(--mute);font-size:14px}
+.tag{font-size:13px;font-weight:600;color:var(--warn);background:var(--warnbg);border-radius:8px;padding:1px 8px;white-space:nowrap}
+.exp{font:inherit;background:none;border:0;color:var(--mute);cursor:pointer;padding:6px;font-size:18px}
+.task.done .info{opacity:.5;text-decoration:line-through}
+.check{padding:0 14px 12px 48px;display:none}
+.task.open .check{display:block}
+.cr{display:flex;align-items:center;gap:8px;margin:6px 0}
+.cr input{width:64px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px;text-align:center}
+.mini{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:4px 10px;cursor:pointer}
+.note{color:var(--mute);font-size:14px}
+.empty{background:var(--card);border-radius:14px;padding:18px;color:var(--mute)}
+details{background:var(--card);border-radius:14px;padding:12px 14px;margin-top:28px}
+summary{cursor:pointer;font-weight:600}
+.ct{font-size:15px;font-weight:600;margin:16px 0 4px}
+.f input{flex:1;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--a);outline-offset:2px}
+</style>
+</head>
+<body>
+<main>
+<h1>Mes ménages</h1>
+<p class="sub"><span id="status">Chargement des réservations…</span><button id="refresh">Rafraîchir</button></p>
+<div id="next"></div>
+<div class="tabs" id="nav"></div>
+<div id="v-m">
+<div class="tabs" id="tabs"></div>
+<div id="list"></div>
+</div>
+<div id="v-i" hidden></div>
+<details>
+<summary>Réglages : consommables et linge</summary>
+<div id="cons"></div>
+<div id="linen"></div>
+<p class="note">Les liens iCal se configurent côté serveur (variables ICAL_URL_1 / ICAL_URL_2), pas ici.</p>
+</details>
+</main>
+<script>
+var CONS=["Papier toilette","Savon des mains","Gel douche / shampoing","Liquide vaisselle","Éponges","Sacs poubelle","Café / thé","Sel, poivre, huile"].map(function(n,i){return{id:"c"+i,n:n}});
+var LINEN=[{id:"w0",n:"Draps",freq:1},{id:"w1",n:"Housses de couette",freq:3},{id:"w2",n:"Taies d'oreiller",freq:2},{id:"w3",n:"Serviettes",freq:1}];
+var DAYS=["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"],MOIS=["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."];
+var st={done:{},stock:{},wash:{},view:"m",open:{},tab:-1};
+try{var s=JSON.parse(localStorage.getItem("menage")||"null");if(s){st.done=s.done||{};st.stock=s.stock||{};st.wash=s.wash||{};if(Array.isArray(s.cons))CONS=s.cons;if(Array.isArray(s.linen))LINEN=s.linen}}catch(e){}
+function save(){try{localStorage.setItem("menage",JSON.stringify({done:st.done,stock:st.stock,wash:st.wash,cons:CONS,linen:LINEN}))}catch(e){}}
+
+var DATA={logements:[],reservations:[]};
+function dayKey(d){var x=new Date(d);x.setHours(0,0,0,0);return x.getTime()}
+function daysBetween(a,b){return Math.round((dayKey(b)-dayKey(a))/86400000)}
+
+function buildTasks(){
+var byL={};DATA.logements.forEach(function(l){byL[l.id]=[]});
+DATA.reservations.forEach(function(r){if(byL[r.logement])byL[r.logement].push(r)});
+var tasks=[];
+DATA.logements.forEach(function(l){
+var res=byL[l.id].slice().sort(function(a,b){return new Date(a.fin)-new Date(b.fin)});
+res.forEach(function(r,i){
+var out=new Date(r.fin);
+var nextArr=null;
+res.forEach(function(o){var s=new Date(o.debut);if(s>=out&&(nextArr===null||s<nextArr))nextArr=s});
+tasks.push({id:l.id+"-"+r.uid,l:l.id,out:out,nextArr:nextArr,same:nextArr&&dayKey(nextArr)===dayKey(out),seq:i});
+})});
+tasks.sort(function(a,b){return a.out-b.out});
+return tasks.filter(function(t){return daysBetween(new Date(),t.out)>=-1});
+}
+function logName(id){var l=DATA.logements.find(function(x){return x.id===id});return l?l.n||l.nom:id}
+function logColor(id){var idx=DATA.logements.findIndex(function(x){return x.id===id});return idx===1?"var(--b)":"var(--a)"}
+function label(d){var g=daysBetween(new Date(),d);if(g===0)return"Aujourd'hui";if(g===1)return"Demain";return DAYS[d.getDay()]+" "+d.getDate()+" "+MOIS[d.getMonth()]}
+function gap(t){if(!t.nextArr)return"Aucune arrivée prévue";if(t.same)return"Arrivée le jour même";var g=daysBetween(t.out,t.nextArr);return"Prochaine arrivée dans "+g+" jour"+(g>1?"s":"")}
+function dueLinen(t){return LINEN.filter(function(x){var last=st.wash[t.l+":"+x.id];return last===undefined?true:(t.seq-last)>=x.freq})}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+
+function view(){var n=document.getElementById("nav");
+n.innerHTML='<button aria-pressed="'+(st.view==="m")+'" data-v="m">Ménages</button><button aria-pressed="'+(st.view==="i")+'" data-v="i">Inventaire</button>';
+document.getElementById("v-m").hidden=st.view!=="m";var vi=document.getElementById("v-i");vi.hidden=st.view!=="i";if(st.view==="i")vi.innerHTML=inv()}
+function inv(){var h="";DATA.logements.forEach(function(lg){h+="<h2>"+esc(lg.n||lg.nom)+"</h2>";CONS.forEach(function(x){var q=st.stock[lg.id+":"+x.id];
+h+='<div class="task" style="--c:'+logColor(lg.id)+'"><div class="row"><div class="info"><b>'+esc(x.n)+"</b><span>"+(q===undefined?"Stock non renseigné":q===0?"Épuisé":"En stock ("+q+")")+'</span></div></div></div>'})});
+return h||'<div class="empty">Ajoutez des consommables dans les réglages.</div>'}
+
+function render(){
+var all=buildTasks(),vis=all.filter(function(t){return st.tab<0||t.l===DATA.logements[st.tab].id});
+var nx=all.filter(function(t){return!st.done[t.id]})[0];
+document.getElementById("next").innerHTML=nx?'<div class="next"><small>Prochain ménage</small><div class="big">'+label(nx.out)+', '+esc(logName(nx.l))+'</div><small>'+gap(nx)+'</small>'+(nx.same?'<span class="flag">Rotation le jour même</span>':'')+'</div>':'';
+var tb='<button aria-pressed="'+(st.tab<0)+'" data-t="-1">Tous</button>';DATA.logements.forEach(function(l,i){tb+='<button aria-pressed="'+(st.tab===i)+'" data-t="'+i+'">'+esc(l.n||l.nom)+'</button>'});
+document.getElementById("tabs").innerHTML=tb;
+var h="",last=null;
+vis.forEach(function(t){var k=dayKey(t.out);if(k!==last){h+="<h2>"+label(t.out)+"</h2>";last=k}
+h+='<div class="task'+(st.done[t.id]?" done":"")+(st.open[t.id]?" open":"")+'" style="--c:'+logColor(t.l)+'"><div class="row"><input type="checkbox" aria-label="Ménage fait" data-d="'+t.id+'"'+(st.done[t.id]?" checked":"")+'><div class="info"><b>'+esc(logName(t.l))+'</b><span>'+gap(t)+'</span></div>'+(t.same?'<span class="tag">Même jour</span>':'')+(dueLinen(t).length?'<span class="tag">Linge à laver</span>':'')+'<button class="exp" aria-label="Afficher les détails" data-o="'+t.id+'">'+(st.open[t.id]?"−":"+")+'</button></div><div class="check">';
+h+="<h3>Linge à laver</h3>";var dl=dueLinen(t);if(dl.length)dl.forEach(function(x){h+='<div class="cr"><span style="flex:1">'+esc(x.n)+'</span><button class="mini" data-w="'+t.l+":"+x.id+":"+t.seq+'">Lavé</button></div>'});else h+='<p class="note">Rien à laver pour ce ménage.</p>';
+h+="<h3>Consommables</h3>";CONS.forEach(function(x){var q=st.stock[t.l+":"+x.id];h+='<div class="cr"><span style="flex:1">'+esc(x.n)+'</span><input type="number" min="0" inputmode="numeric" aria-label="Quantité en stock" data-q="'+t.l+":"+x.id+'" value="'+(q===undefined?"":q)+'"></div>'});
+h+="</div></div>"});
+view();document.getElementById("list").innerHTML=h||'<div class="empty">Aucun ménage à venir.</div>'}
+
+document.addEventListener("click",function(e){
+var b=e.target.closest("[data-t]");if(b){st.tab=+b.dataset.t;render();return}
+b=e.target.closest("[data-v]");if(b){st.view=b.dataset.v;render();return}
+b=e.target.closest("[data-w]");if(b){var w=b.dataset.w.split(":");st.wash[w[0]+":"+w[1]]=+w[2];save();render();return}
+b=e.target.closest("[data-o]");if(b){st.open[b.dataset.o]=!st.open[b.dataset.o];render()}});
+document.addEventListener("change",function(e){var d=e.target.dataset;
+if(d.q){var v=e.target.value;if(v==="")delete st.stock[d.q];else st.stock[d.q]=Math.max(0,Math.floor(+v)||0);save()}
+else if(d.d){st.done[d.d]=e.target.checked;save();render()}});
+
+function renderCons(){var h='<h3 class="ct">Consommables</h3>';CONS.forEach(function(x){h+='<div class="cr"><input style="flex:1;text-align:left" aria-label="Nom" value="'+esc(x.n)+'" data-cn="'+x.id+'"><button data-cdel="'+x.id+'">Supprimer</button></div>'});
+h+='<div class="cr"><input id="cnew" style="flex:1;text-align:left" placeholder="Nouveau consommable"><button data-cadd="1">Ajouter</button></div>';document.getElementById("cons").innerHTML=h}
+function renderLinen(){var h='<h3 class="ct">Linge (fréquence en nombre de ménages)</h3>';LINEN.forEach(function(x){h+='<div class="cr"><input style="flex:1;text-align:left" aria-label="Nom" value="'+esc(x.n)+'" data-ln="'+x.id+'"><input type="number" min="1" aria-label="Fréquence" value="'+x.freq+'" data-lf="'+x.id+'"><button data-ldel="'+x.id+'">Supprimer</button></div>'});
+h+='<div class="cr"><input id="lnew" style="flex:1;text-align:left" placeholder="Nouvel article"><input id="lnewf" type="number" min="1" value="1"><button data-ladd="1">Ajouter</button></div>';document.getElementById("linen").innerHTML=h}
+
+document.getElementById("cons").addEventListener("input",function(e){var id=e.target.dataset.cn;if(!id)return;CONS.forEach(function(x){if(x.id===id)x.n=e.target.value});save();render()});
+document.getElementById("cons").addEventListener("click",function(e){var b=e.target.closest("[data-cdel],[data-cadd]");if(!b)return;
+if(b.dataset.cadd){var i=document.getElementById("cnew"),v=i.value.trim();if(v){CONS.push({id:"c"+Date.now(),n:v});save();renderCons();render()}return}
+CONS=CONS.filter(function(x){return x.id!==b.dataset.cdel});save();renderCons();render()});
+document.getElementById("linen").addEventListener("input",function(e){var d=e.target.dataset;if(d.ln)LINEN.forEach(function(x){if(x.id===d.ln)x.n=e.target.value});if(d.lf)LINEN.forEach(function(x){if(x.id===d.lf)x.freq=Math.max(1,+e.target.value||1)});if(d.ln||d.lf){save();render()}});
+document.getElementById("linen").addEventListener("click",function(e){var b=e.target.closest("[data-ldel],[data-ladd]");if(!b)return;
+if(b.dataset.ladd){var i=document.getElementById("lnew"),f=document.getElementById("lnewf"),v=i.value.trim();if(v){LINEN.push({id:"w"+Date.now(),n:v,freq:Math.max(1,+f.value||1)});save();renderLinen();render()}return}
+LINEN=LINEN.filter(function(x){return x.id!==b.dataset.ldel});save();renderLinen();render()});
+
+async function load(force){
+document.getElementById("status").textContent="Chargement des réservations…";
+try{
+var r=await fetch("/api/reservations"+(force?"?force=1":""));
+DATA=await r.json();
+document.getElementById("status").textContent="Mis à jour : "+new Date(DATA.misAJour).toLocaleString("fr-FR");
+}catch(e){document.getElementById("status").textContent="Impossible de charger les réservations."}
+render()}
+document.getElementById("refresh").addEventListener("click",function(){load(true)});
+renderCons();renderLinen();load(false);
+</script>
+</body>
+</html>
